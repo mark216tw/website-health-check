@@ -2,6 +2,9 @@
 -keep class com.websitecheck.app.work.CheckWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
+-keep class com.websitecheck.app.work.WatchdogWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
 
 # Manifest components are kept by AGP, but keep this explicitly for release builds.
 -keep class com.websitecheck.app.work.TimeChangeReceiver { *; }

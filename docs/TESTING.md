@@ -26,13 +26,14 @@ UI、WorkManager 實際排程、Room migration、通知與 R8 執行期行為需
 | 測試類別 | 數量 | 內容 |
 |---|---:|---|
 | `ScheduleCalculatorTest` | 13 | 首次立即檢查、時段邊界、跨午夜、相對間隔、逾期補檢查、間隔下限、停用日 |
+| `OverdueEvaluatorTest` | 9 | 逾期判斷、寬限邊界、時段外、停用日、跨午夜、從未檢查 |
 | `HealthCheckerTest` | 10 | 成功、狀態碼失敗、轉址、停用轉址、無效網址、內容字串、大小寫、強制 GET、URL 正規化 |
 | `ErrorTypeTest` | 3 | 錯誤類型中文標籤與未知類型 |
 | `LogCsvTest` | 2 | CSV header、BOM、逗號／引號／換行跳脫 |
 | `SiteSortOptionTest` | 6 | 名稱、建立時間、狀態、回應時間、null 排序 |
 | `SettingsRepositoryTest` | 3 | 設定持久化與預設值 |
 
-目前合計：**37 項測試**。
+目前合計：**46 項測試**。
 
 ## 3. Lint 與建置
 
@@ -78,6 +79,11 @@ UI、WorkManager 實際排程、Room migration、通知與 R8 執行期行為需
 - [ ] 變更時間或時區後排程重新校正
 - [ ] 設定頁「排程診斷」狀態正確
 - [ ] 按「重新排程」後狀態更新
+- [ ] 逾期網站顯示「已逾期」，開啟 App 後立即補檢查
+- [ ] 看門狗狀態與上次執行時間正常更新
+- [ ] `adb shell dumpsys deviceidle force-idle` 後解除，App 回前景可補檢查
+- [ ] 檢查期間切換飛航模式，恢復網路後仍會繼續排程
+- [ ] 強制停止 App 後重新開啟，排程會自動重建
 
 ### 4.4 通知
 
@@ -111,6 +117,7 @@ UI、WorkManager 實際排程、Room migration、通知與 R8 執行期行為需
 - [ ] App 可啟動
 - [ ] 可新增網站並執行檢查
 - [ ] WorkManager 可執行背景檢查
+- [ ] 看門狗可執行並更新上次執行時間
 - [ ] TimeChangeReceiver 可收到時間變更
 - [ ] 通知可發送
 - [ ] CSV 可匯出

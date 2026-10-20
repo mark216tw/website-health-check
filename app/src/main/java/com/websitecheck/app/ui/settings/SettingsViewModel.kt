@@ -12,6 +12,7 @@ import androidx.work.WorkInfo
 import com.websitecheck.app.WebsiteCheckApp
 import com.websitecheck.app.data.LogCsv
 import com.websitecheck.app.data.ThemeMode
+import com.websitecheck.app.work.OverdueEvaluator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,17 +41,32 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     var scheduleStates by mutableStateOf<Map<Long, String>>(emptyMap())
         private set
 
+    var overdueSiteIds by mutableStateOf<Set<Long>>(emptySet())
+        private set
+
+    var watchdogState by mutableStateOf<String?>(null)
+        private set
+
+    var watchdogLastRunAt by mutableStateOf(0L)
+        private set
+
     var message by mutableStateOf<String?>(null)
         private set
 
     fun refreshScheduleStates() {
         viewModelScope.launch {
             val enabledSites = repository.getEnabledSites()
+            val now = System.currentTimeMillis()
             val states = mutableMapOf<Long, String>()
+            val overdue = mutableSetOf<Long>()
             enabledSites.forEach { site ->
                 states[site.id] = scheduleStateLabel(container.scheduler.workState(site.id))
+                if (OverdueEvaluator.isOverdue(site, now)) overdue += site.id
             }
             scheduleStates = states
+            overdueSiteIds = overdue
+            watchdogState = scheduleStateLabel(container.scheduler.watchdogState())
+            watchdogLastRunAt = container.scheduler.lastWatchdogRunAt()
         }
     }
 

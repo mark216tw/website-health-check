@@ -113,8 +113,10 @@ ViewModels 繼承 `AndroidViewModel`，透過 `WebsiteCheckApp.container` 取得
 位置：`app/src/main/java/com/websitecheck/app/work`
 
 - `ScheduleCalculator`：計算下一次檢查時間。
-- `CheckScheduler`：建立／取消 WorkManager 工作、查詢狀態、啟動時校正。
+- `OverdueEvaluator`：判斷網站是否逾期（5 分鐘寬限、時間區段與星期）。
+- `CheckScheduler`：建立／取消 WorkManager 工作、查詢狀態、看門狗與啟動時校正。
 - `CheckWorker`：實際執行檢查、寫入紀錄、通知與安排下一次檢查。
+- `WatchdogWorker`：每 15 分鐘校正逾期或中斷的排程。
 - `TimeChangeReceiver`：時間或時區變更時重新排程。
 
 ### 3.6 通知層
@@ -139,14 +141,15 @@ sequenceDiagram
     participant Repo as SiteRepository
     participant WM as WorkManager
     App->>Container: 建立資料庫、Repository、Scheduler
+    App->>Scheduler: ensureWatchdog()
     App->>Scheduler: reconcileSchedules()
     Scheduler->>Repo: getEnabledSites()
     Scheduler->>WM: 查詢各網站 unique work 狀態
-    Scheduler->>WM: 缺少排程者重新 enqueue
+    Scheduler->>WM: 缺少或逾期排程重新 enqueue
     App->>Repo: 清理超過保留期限的紀錄
 ```
 
-`MainActivity` 第一次建立時會再執行一次強制排程校正，確保舊版排程立即套用最新規則；若 Activity 只是因旋轉重建，則不重複處理。
+`MainActivity` 每次回到前景（`onStart`，60 秒節流）會再校正一次；逾期網站會立即補檢查。
 
 ## 5. 排程設計
 
@@ -157,6 +160,7 @@ sequenceDiagram
 - 工作類型：`OneTimeWorkRequest`
 - 限制：`NetworkType.CONNECTED`
 - 初次延遲由 `ScheduleCalculator` 計算
+- 看門狗：`PeriodicWorkRequest`，每 15 分鐘，唯一名稱 `schedule_watchdog`，無網路限制
 
 ### 5.2 自我重排
 
@@ -164,6 +168,7 @@ sequenceDiagram
 
 - 若網站仍啟用，使用 `APPEND_OR_REPLACE` 安排下一次。
 - 若網站已停用或刪除，取消排程。
+- 重排在 `NonCancellable` 中執行，避免工作被停止時漏掉下一次排程。
 
 儲存設定或手動重新排程時使用 `REPLACE`，避免舊設定殘留。
 
@@ -173,14 +178,27 @@ sequenceDiagram
 
 - 僅處理啟用中的網站。
 - 狀態為 `RUNNING` 時跳過，避免中斷執行中的檢查。
-- `forceReschedule = true` 時取消並重建非執行中的排程。
+- 逾期網站一律以 `REPLACE` + 立即執行補檢查。
+- `forceReschedule = true` 時取消並重建非逾期、非執行中的排程。
 - 觸發時機：
-  - App 啟動（版本遷移時強制）
-  - MainActivity 首次建立
+  - App 啟動
+  - MainActivity 回到前景（60 秒節流）
+  - 看門狗每 15 分鐘
   - 時間／時區變更
   - 使用者按下「重新排程」
 
-### 5.4 下次時間計算
+### 5.4 逾期判斷
+
+`OverdueEvaluator.isOverdue()`
+
+1. 停用、未設定星期或目前不在時間區段內 → 不視為逾期。
+2. 以 `lastCheckAt ?: createdAt` 為基準計算應跑時間。
+3. 目前時間超過應跑時間 5 分鐘以上 → 逾期。
+4. 逾期時由看門狗或前景校正立即補檢查。
+
+看門狗本身仍受 Doze／OEM 省電限制，無法保證 30 分鐘準時執行。
+
+### 5.5 下次時間計算
 
 `ScheduleCalculator.nextRunMillis()`
 

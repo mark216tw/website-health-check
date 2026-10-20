@@ -63,6 +63,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.websitecheck.app.ui.components.ScreenHeader
 import com.websitecheck.app.data.ThemeMode
 import com.websitecheck.app.notify.NotificationHelper
+import com.websitecheck.app.ui.formatAge
 import com.websitecheck.app.ui.formatNextRun
 import com.websitecheck.app.ui.formatTimestamp
 import java.time.LocalDate
@@ -242,6 +243,18 @@ fun SettingsScreen() {
                     },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Android 的 Doze 模式會把背景工作延後到維護窗口；未設定「不受限制」時，30 分鐘的間隔可能延遲超過 1 小時。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "建議將本 App 設為「不受限制」，並檢查手機廠商的額外省電／自啟動限制。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = {
                         runCatching {
@@ -287,6 +300,23 @@ fun SettingsScreen() {
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "看門狗：${viewModel.watchdogState ?: "查詢中"}　上次執行：${
+                        if (viewModel.watchdogLastRunAt > 0L) {
+                            formatAge(viewModel.watchdogLastRunAt)
+                        } else {
+                            "尚未執行"
+                        }
+                    }",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "看門狗每 15 分鐘檢查逾期排程；逾期會在下次執行或開啟 App 時立即補檢查。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 val enabledSites = sites.filter { it.enabled }
                 if (enabledSites.isEmpty()) {
                     Text(
@@ -299,6 +329,7 @@ fun SettingsScreen() {
                         if (index > 0) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         }
+                        val overdue = site.id in viewModel.overdueSiteIds
                         Text(
                             text = site.name,
                             style = MaterialTheme.typography.titleSmall,
@@ -312,10 +343,21 @@ fun SettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = "上次：${formatTimestamp(site.lastCheckAt)}",
+                            text = "上次：${formatTimestamp(site.lastCheckAt)}（${formatAge(site.lastCheckAt)}）",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (overdue) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
+                        if (overdue) {
+                            Text(
+                                text = "已逾期，將盡快補檢查",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }

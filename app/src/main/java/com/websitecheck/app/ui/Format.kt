@@ -25,6 +25,17 @@ fun formatMinutesOfDay(minutes: Int): String {
 
 fun formatLatency(millis: Long?): String = if (millis == null) "-" else "${millis} ms"
 
+fun formatAge(millis: Long?, nowMillis: Long = System.currentTimeMillis()): String {
+    if (millis == null) return "尚未檢查"
+    val minutes = ((nowMillis - millis).coerceAtLeast(0L)) / 60_000L
+    return when {
+        minutes < 1 -> "剛剛"
+        minutes < 60 -> "$minutes 分鐘前"
+        minutes < 24 * 60 -> "${minutes / 60} 小時前"
+        else -> "${minutes / (24 * 60)} 天前"
+    }
+}
+
 fun formatInterval(minutes: Int): String =
     if (minutes % 60 == 0) "每 ${minutes / 60} 小時" else "每 $minutes 分鐘"
 

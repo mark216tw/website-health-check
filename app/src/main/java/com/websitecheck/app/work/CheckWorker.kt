@@ -3,10 +3,13 @@ package com.websitecheck.app.work
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
+import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
 import androidx.work.ExistingWorkPolicy
 import com.websitecheck.app.WebsiteCheckApp
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 class CheckWorker(
     context: Context,
@@ -59,12 +62,24 @@ class CheckWorker(
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error checking site $siteId", e)
         } finally {
-            if (reschedule && !isStopped) {
-                val latest = container.siteRepository.getSite(siteId)
-                if (latest != null && latest.enabled) {
-                    container.scheduler.scheduleNext(latest, ExistingWorkPolicy.APPEND_OR_REPLACE)
-                } else {
-                    container.scheduler.cancel(siteId)
+            if (reschedule) {
+                withContext(NonCancellable) {
+                    runCatching {
+                        val latest = container.siteRepository.getSite(siteId)
+                        if (latest != null && latest.enabled) {
+                            val state = container.scheduler.workState(siteId)
+                            if (state != WorkInfo.State.ENQUEUED) {
+                                container.scheduler.scheduleNext(
+                                    latest,
+                                    ExistingWorkPolicy.APPEND_OR_REPLACE,
+                                )
+                            }
+                        } else {
+                            container.scheduler.cancel(siteId)
+                        }
+                    }.onFailure {
+                        Log.e(TAG, "Failed to schedule next check for site $siteId", it)
+                    }
                 }
             }
         }

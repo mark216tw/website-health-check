@@ -63,7 +63,7 @@
 | 電量 | 使用 WorkManager，不常駐前景服務 |
 | 隱私 | 無帳號、無分析、無遙測，資料僅存本機 |
 | 效能 | 檢查於 IO 執行；清單使用 LazyColumn；查詢有索引 |
-| 可靠性 | 排程校正、Worker finally 重排、資料庫交易 |
+| 可靠性 | 排程校正、逾期看門狗、Worker 重排、資料庫交易 |
 | 可維護性 | 分層架構、單元測試、集中格式化與 CSV 工具 |
 | 可及性 | 狀態同時以文字與顏色呈現；按鈕具 contentDescription |
 
@@ -165,10 +165,12 @@ next = 最早符合下列條件的時間：
 ### 6.4 與 WorkManager 的搭配
 
 - 每個網站一個 unique work。
-- Worker 完成後以 `APPEND_OR_REPLACE` 建立下一次。
+- Worker 完成後以 `APPEND_OR_REPLACE` 建立下一次；重排於 `NonCancellable` 中執行。
 - 修改設定、啟用、手動重新排程使用 `REPLACE`。
-- 啟動／時區變更時執行 reconciliation，只補缺少或強制重建。
+- 看門狗每 15 分鐘執行 reconciliation，補缺少或逾期的排程。
+- 啟動／回到前景／時區變更時執行 reconciliation；逾期網站立即補檢查。
 - 執行中的 Worker 不會被 reconciliation 中斷。
+- 看門狗仍受 Doze／OEM 省電限制。
 
 ## 7. 網站狀態模型
 

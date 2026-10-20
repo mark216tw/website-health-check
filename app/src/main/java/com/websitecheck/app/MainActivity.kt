@@ -22,4 +22,9 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        (application as com.websitecheck.app.WebsiteCheckApp).reconcileSchedulesAsync()
+    }
 }

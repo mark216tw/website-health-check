@@ -11,10 +11,12 @@ class WebsiteCheckApp : Application() {
         private set
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var lastReconcileAt = 0L
 
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.scheduler.ensureWatchdog()
         appScope.launch {
             val preferences = getSharedPreferences(SCHEDULER_PREFERENCES, MODE_PRIVATE)
             val scheduleVersion = preferences.getInt(KEY_SCHEDULE_VERSION, 0)
@@ -32,6 +34,15 @@ class WebsiteCheckApp : Application() {
         }
     }
 
+    fun reconcileSchedulesAsync() {
+        val now = System.currentTimeMillis()
+        if (now - lastReconcileAt < RECONCILE_THROTTLE_MILLIS) return
+        lastReconcileAt = now
+        appScope.launch {
+            runCatching { container.scheduler.reconcileSchedules() }
+        }
+    }
+
     private suspend fun cleanupExpiredLogs() {
         val retentionDays = container.settingsRepository.settings.value.retentionDays
         if (retentionDays <= 0) return
@@ -43,6 +54,7 @@ class WebsiteCheckApp : Application() {
         private const val SCHEDULER_PREFERENCES = "scheduler_migrations"
         private const val KEY_SCHEDULE_VERSION = "schedule_version"
         private const val CURRENT_SCHEDULE_VERSION = 1
+        private const val RECONCILE_THROTTLE_MILLIS = 60_000L
         private const val DAY_MILLIS = 24L * 60L * 60L * 1_000L
     }
 }
