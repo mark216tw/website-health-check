@@ -161,13 +161,31 @@ gh release create v1.0.0-prerelease \
   --prerelease
 ```
 
-若需更新既有 Release：
+若只需替換既有 Release 的 Asset：
 
 ```bash
 gh release upload v1.0.0-prerelease \
   app/build/outputs/apk/prerelease/app-prerelease.apk \
   --clobber
 ```
+
+### 4.1 同版號重建發行
+
+若需維持版號重建既有 Pre-release（例如只修正排程或文件）：
+
+```bash
+# 刪除既有 Release 與遠端標籤
+gh release delete v1.0.0-prerelease --yes --cleanup-tag
+
+# 重新建立 Release，標籤會指向目前提交
+gh release create v1.0.0-prerelease \
+  app/build/outputs/apk/prerelease/app-prerelease.apk \
+  --title "網站健康檢查 v1.0.0-prerelease" \
+  --notes-file docs/RELEASE_NOTES_v1.0.0-prerelease.md \
+  --prerelease
+```
+
+同版號重建時請一併更新 Release Notes 的建置日期與 SHA-256，並在 `CHANGELOG.md` 標註「同版號重建發行」。
 
 ## 5. 版本命名
 
@@ -177,7 +195,7 @@ gh release upload v1.0.0-prerelease \
 | Pre-release | `versionName + "-prerelease"` | 1.0.0-prerelease |
 | 正式 Release | 自行定義 | 1.0.0 |
 
-`versionCode` 目前為 1。每次重新發佈應遞增 `versionCode`。
+`versionCode` 目前為 1。一般重新發佈應遞增 `versionCode`；若明確指定維持版號重建，則 `versionCode` 保持不變，並於 `CHANGELOG.md` 與 Release Notes 標註。
 
 ## 6. 發行前檢查清單
 
